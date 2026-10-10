@@ -47,6 +47,7 @@
             align-items: center;
             gap: 20px;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         h1 { margin: 0; }
@@ -279,11 +280,13 @@
     <header>
         <h1>🐮 MooTube</h1>
 
+        {% if config.pesquisa_ativo %}
         <form action="/pesquisar" method="get">
             <input type="search" name="busca" placeholder="Pesquisar vídeos...">
         </form>
+        {% endif %}
 
-        <!-- DROPDOWN DE VERSÕES (sempre primeiro entre os botões) -->
+        {% if config.select_versao_ativo %}
         <select id="select-versao" title="Escolher versão">
             <option value="__latest__" data-versao="mais recente">
                 🆕 Mais recente
@@ -297,22 +300,28 @@
             {% endfor %}
         </select>
 
-        <!-- BAIXAR VERSÃO SELECIONADA -->
         <form action="/trocar_versao_dropdown" method="get" id="form-versao"
               onsubmit="return prepararTroca();">
             <input type="hidden" name="sha" id="input-sha">
             <input type="hidden" name="versao" id="input-versao">
             <button type="submit">🔄</button>
         </form>
+        {% endif %}
 
-        <!-- ENVIAR URLS -->
+        {% if config.urls_ativo %}
         <form action="/url" method="post">
             <button type="submit">🔗</button>
         </form>
+        {% endif %}
 
-        <!-- FEATURES -->
+        {% if config.features_ativo %}
         <form action="/features" method="get">
             <button>➕</button>
+        </form>
+        {% endif %}
+
+        <form action="/configuracoes" method="get">
+            <button title="Configurações">⚙️</button>
         </form>
     </header>
 
@@ -350,6 +359,7 @@
     </div>
 
     <!-- ===================== FEED ===================== -->
+    {% if config.feed_ativo %}
     <div class="feed">
         <h2>📡 Feed</h2>
 
@@ -362,8 +372,10 @@
             <button id="btn-mais" class="btn-mais">✨ Atualizar feed</button>
         </div>
     </div>
+    {% endif %}
 
     <script>
+        {% if config.select_versao_ativo %}
         // ---------- Trocar versão pelo dropdown ----------
         function prepararTroca() {
             const select = document.getElementById('select-versao');
@@ -381,7 +393,9 @@
                 return confirm('Trocar pra versão ' + versao + '?');
             }
         }
+        {% endif %}
 
+        {% if config.pesquisa_ativo %}
         // ---------- Filtro incremental da biblioteca ----------
         const input = document.querySelector('input[name="busca"]');
         let timeout = null;
@@ -402,7 +416,9 @@
                     });
             }, 300);
         });
+        {% endif %}
 
+        {% if config.notificacoes_globais_ativo %}
         // ---------- SSE ----------
         const evento = new EventSource('/stream');
         evento.onmessage = function(e) {
@@ -415,6 +431,7 @@
                 banner.style.display = 'none';
             }
         };
+        {% endif %}
 
         // ---------- Helpers ----------
         function escapeHtml(s) {
@@ -452,6 +469,7 @@
             grid.innerHTML = videos.map(renderCardBiblioteca).join('');
         }
 
+        {% if config.feed_ativo %}
         // ---------- Feed ----------
         function renderCardFeed(r) {
             const titulo = escapeHtml(r.titulo || '');
@@ -593,9 +611,10 @@
             btnMais.disabled = false;
         });
 
-        // ---------- Init ----------
+        // ---------- Init feed ----------
         carregarCanais();
         carregarFeed();
+        {% endif %}
     </script>
 </body>
 </html>
