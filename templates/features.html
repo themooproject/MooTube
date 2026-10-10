@@ -3,32 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MooTube - Home</title>
+    <title>MooTube - Novidades</title>
     <style>
-        input {
-            display: block;
-            margin: 0 auto;
-            width: 800px;
-            height: 100;
-            color: rgb(0, 0, 0);
-            font-size: larger;
-            background-repeat: repeat;
-            background-size: 60px;
-            border-radius: 50px;
-            text-align: right;
-            background-image: url("/static/cow-texture.jpg")
-        }
+        * { box-sizing: border-box; }
+
         button {
             display: block;
             margin: 0 auto;
-            color: rgb(0, 0, 0);
+            color: #000;
             font-size: larger;
             background-repeat: repeat;
             background-size: 60px;
             border-radius: 50px;
-            text-align: right;
+            text-align: center;
             background-image: url("/static/cow-texture.jpg");
+            cursor: pointer;
+            padding: 6px 20px;
+            border: 2px solid #ccc;
         }
+
         body {
             background-repeat: repeat;
             background-size: 100px;
@@ -36,81 +29,125 @@
             background-color: rgb(240, 238, 238);
             font-family: Arial, Helvetica, sans-serif;
         }
-        
+
         header {
             background-color: white;
             padding: 10px;
-            display: flex; 
-            align-items: center; 
-            gap: 20px; 
-            justify-content: center; 
-        }
-
-        .videos {
-            text-align: center;
-            margin: 50px;
-        }
-        
-        h1 {
-            margin: 0;
-        }
-
-        .video-player {
-            width: 100%;
-            max-width: 270px;
-            border-radius: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-
-        .video-grid {
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
             gap: 20px;
             justify-content: center;
-            margin-top: 30px;
+            border-bottom: 2px solid #ddd;
         }
 
-        .video-card {
+        h1 { margin: 0; }
+
+        main {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .versao-atual {
             background: white;
             border-radius: 15px;
-            padding: 15px;
+            padding: 20px;
             text-align: center;
-            width: 200px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            border: 2px solid #ddd;
         }
 
-        .video-card video {
-            width: 100%;
-            border-radius: 10px;
+        .versao-atual span {
+            color: #c00;
         }
-        .features {
-            margin-left: 30px;
+
+        .changelog {
+            background: white;
+            border-radius: 15px;
+            padding: 25px 30px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .changelog h2 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .changelog .data {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .changelog ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .changelog li {
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tag-novo   { background: #d4edda; color: #155724; }
+        .tag-melhoria { background: #d1ecf1; color: #0c5460; }
+        .tag-correcao { background: #fff3cd; color: #856404; }
+        .tag-removido { background: #f8d7da; color: #721c24; }
+
+        @media (max-width: 600px) {
+            main { padding: 0 12px; margin: 20px auto; }
+            .changelog { padding: 18px 18px; }
+            .changelog h2 { font-size: 17px; }
+            .changelog li { font-size: 13px; }
         }
     </style>
 </head>
 <body>
     <header>
         <h1>🐮 MooTube</h1>
-        <form action="/pesquisar" method="get">
-            <input type="search" name="busca" placeholder="Pesquisar vídeos...">
+        <form action="/" method="get">
+            <button>🏠</button>
         </form>
     </header>
-    <div class="features">
-        <h1>Informações</h1>
-        <p>Versão Atual: 26.08.27</p>
-        <p>Nome do update Atual: Vaca Brincalhona</p>
-        <p>Status do Update: Finalizado</p>
-        <h1>Features novas do mootube</h1>
-        <ul>
-            <li>Filtro por palavras</li>
-            <li>JavaScript no código</li>
-            <li>Aviso de atualização</li>
-            <li>Suporte a URLs diretamente na busca</li>
-            <li>Atualização sem nescessidade de reset</li>
-            <li>Sistema de notificações</li>
-            <li>Download Automático de dependências mais novas</li>
-            <li>Novo DockerFile</li>
-            <li>Ajustes visuais para mobile</li>
-        </ul>
-    </div>
+
+    <main>
+        <div class="versao-atual">
+            Versão atual: <span>{{ versao }}</span>
+        </div>
+
+        <div class="changelog" id="26.10.10">
+            <h2>Vaca Futurista - 26.10.10</h2>
+            <p class="data">10/10/26</p>
+            <ul>
+                <li><span class="tag tag-novo">novo</span> Feed agora é construído a partir dos canais que você baixa. Cada download registra o canal automaticamente.</li>
+                <li><span class="tag tag-novo">novo</span> Cada canal baixado vai para a o feed.</li>
+                <li><span class="tag tag-novo">novo</span> Botão <strong>✨ Atualizar feed</strong> pra rebuscar os RSS de todos os canais na hora.</li>
+                <li><span class="tag tag-novo">novo</span> Página de resultados de busca com botão Baixar em cada vídeo.</li>
+                <li><span class="tag tag-novo">novo</span> Botão Baixar na busca também registra o canal no feed automaticamente.</li>
+                <li><span class="tag tag-novo">novo</span> Aba features com histórico</li>
+                <li><span class="tag tag-melhoria">melhoria</span> Feed usa RSS público dos canais em vez de busca genérica — zero algoritmo, zero lixo.</li>
+                <li><span class="tag tag-removido">removido</span> Rota licença
+                <li><span class="tag tag-removido">removido</span> Rota features antigas
+                <li><span class="tag tag-correcao">correção</span> Rotas de download agora capturam <code>FileNotFoundError</code> quando o <code>yt-dlp</code> não está no PATH.</li>
+            </ul>
+        </div>
+    </main>
 </body>
 </html>
