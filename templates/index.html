@@ -51,6 +51,21 @@
 
         h1 { margin: 0; }
 
+        /* ---------- DROPDOWN DE VERSÕES ---------- */
+        #select-versao {
+            background-image: url("/static/cow-texture.jpg");
+            background-repeat: repeat;
+            background-size: 60px;
+            border: 2px solid #ccc;
+            border-radius: 50px;
+            padding: 6px 12px;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            max-width: 220px;
+        }
+        #select-versao:focus { outline: none; border-color: #999; }
+
         .videos, .feed {
             text-align: center;
             margin: 50px 20px;
@@ -230,6 +245,11 @@
                 color: #333 !important;
                 border-radius: 50px !important;
             }
+            #select-versao {
+                max-width: 160px;
+                font-size: 13px;
+                padding: 5px 8px;
+            }
             .videos, .feed { margin: 20px 10px; }
             .video-grid { gap: 12px; }
             .videos .video-card { width: 160px; padding: 10px; }
@@ -248,21 +268,49 @@
             }
             header button { font-size: 13px; padding: 4px 10px; min-width: 34px; }
             .video-card p { font-size: 11px; }
+            #select-versao {
+                max-width: 130px;
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
     <header>
         <h1>🐮 MooTube</h1>
+
         <form action="/pesquisar" method="get">
             <input type="search" name="busca" placeholder="Pesquisar vídeos...">
         </form>
+
+        <!-- DROPDOWN DE VERSÕES (sempre primeiro entre os botões) -->
+        <select id="select-versao" title="Escolher versão">
+            <option value="__latest__" data-versao="mais recente">
+                🆕 Mais recente
+            </option>
+            {% for v in versoes %}
+            <option value="{{ v.sha }}"
+                    data-versao="{{ v.versao }}"
+                    {% if v.versao == versao_atual %}selected{% endif %}>
+                {{ v.versao }} ({{ v.data }}){% if v.versao == versao_atual %} — atual{% endif %}
+            </option>
+            {% endfor %}
+        </select>
+
+        <!-- BAIXAR VERSÃO SELECIONADA -->
+        <form action="/trocar_versao_dropdown" method="get" id="form-versao"
+              onsubmit="return prepararTroca();">
+            <input type="hidden" name="sha" id="input-sha">
+            <input type="hidden" name="versao" id="input-versao">
+            <button type="submit">🔄</button>
+        </form>
+
+        <!-- ENVIAR URLS -->
         <form action="/url" method="post">
             <button type="submit">🔗</button>
         </form>
-        <form action="/atualizar" method="get">
-            <button>🔄</button>
-        </form>
+
+        <!-- FEATURES -->
         <form action="/features" method="get">
             <button>➕</button>
         </form>
@@ -278,7 +326,7 @@
 
     {% if tem_atualizacao %}
     <div class="update-banner">
-        🔄 Nova versão {{ versao }} disponível! Clique em 🔄 para atualizar.
+        🔄 Nova versão {{ versao }} disponível! Escolha no dropdown e clique em 🔄.
     </div>
     {% endif %}
 
@@ -316,6 +364,24 @@
     </div>
 
     <script>
+        // ---------- Trocar versão pelo dropdown ----------
+        function prepararTroca() {
+            const select = document.getElementById('select-versao');
+            const opt = select.selectedOptions[0];
+            const sha = opt.value;
+            const versao = opt.dataset.versao;
+
+            if (sha === '__latest__') {
+                document.getElementById('input-sha').value = '';
+                document.getElementById('input-versao').value = 'mais recente';
+                return confirm('Baixar a versão MAIS RECENTE?');
+            } else {
+                document.getElementById('input-sha').value = sha;
+                document.getElementById('input-versao').value = versao;
+                return confirm('Trocar pra versão ' + versao + '?');
+            }
+        }
+
         // ---------- Filtro incremental da biblioteca ----------
         const input = document.querySelector('input[name="busca"]');
         let timeout = null;
