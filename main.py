@@ -1,4 +1,3 @@
-
 import subprocess
 print("Iniciando Mootube...")
 subprocess.run(
@@ -31,10 +30,15 @@ RATE_LIMIT = 15
 FEED_CACHE_TTL = 900
 INSCRITOS_FILE = "inscritos.txt"
 
+# Config do repositório GitHub (usado pra listar/trocar versões)
+GITHUB_USUARIO = "themooproject"
+GITHUB_REPO = "mootube"
+
 rate_limit_store = {}
 notificacao_ativa = None
 notificacao_global = None
 _feed_cache = {"ts": 0, "dados": []}
+_versoes_cache = {"ts": 0, "dados": []}
 
 
 # ------------------------------------------------------------------
@@ -273,6 +277,123 @@ def verificar_atualizacao():
 
 
 # ------------------------------------------------------------------
+# Versões (lista + troca + atualização)
+# ------------------------------------------------------------------
+def versao_atual_local():
+    try:
+        if os.path.exists("version.txt"):
+            with open("version.txt") as f:
+                return f.read().strip()
+    except Exception:
+        pass
+    return "0.0.0"
+
+
+def listar_versoes_github():
+    """Lista todas as versões do version.txt no GitHub (cache de 10min)."""
+    agora = time.time()
+    if agora - _versoes_cache["ts"] < 600 and _versoes_cache["dados"]:
+        return _versoes_cache["dados"]
+
+    try:
+        url = f"https://api.github.com/repos/{GITHUB_USUARIO}/{GITHUB_REPO}/commits"
+        r = requests.get(url, params={"path": "version.txt"}, timeout=15)
+        if r.status_code != 200:
+            return []
+        commits = r.json()
+    except Exception as e:
+        print(f"[versoes] erro: {e}")
+        return []
+
+    versoes = []
+    for c in commits:
+        sha = c["sha"]
+        data = c["commit"]["author"]["date"][:10]
+        try:
+            raw = (
+                f"https://raw.githubusercontent.com/"
+                f"{GITHUB_USUARIO}/{GITHUB_REPO}/{sha}/version.txt"
+            )
+            resp = requests.get(raw, timeout=10)
+            if resp.status_code != 200:
+                continue
+            versao = resp.text.strip()
+        except Exception:
+            continue
+        if versao:
+            versoes.append({"versao": versao, "sha": sha, "data": data})
+
+    _versoes_cache["dados"] = versoes
+    _versoes_cache["ts"] = agora
+    return versoes
+
+
+def _aplicar_versao(sha=None, versao="desconhecida"):
+    """
+    Clona o repo e, se sha for passado, faz checkout nele.
+    Se sha for None, pega o main (versão mais recente).
+    Copia tudo pro diretório atual, exceto videos/ e inscritos.txt.
+    Retorna (ok, mensagem).
+    """
+    tmp_dir = "mootube_tmp"
+    try:
+        subprocess.run(f"rm -rf {tmp_dir}", shell=True,
+                       capture_output=True, text=True)
+
+        # 1. Clona
+        subprocess.run(
+            ["git", "clone",
+             f"https://github.com/{GITHUB_USUARIO}/{GITHUB_REPO}.git",
+             tmp_dir],
+            check=True, capture_output=True, text=True, timeout=120
+        )
+
+        # 2. Checkout (se for versão específica)
+        if sha:
+            subprocess.run(
+                ["git", "checkout", sha],
+                cwd=tmp_dir,
+                check=True, capture_output=True, text=True, timeout=60
+            )
+
+        # 3. Copia tudo, exceto videos/ e inscritos.txt
+        subprocess.run(
+            "find mootube_tmp -mindepth 1 -maxdepth 1 "
+            "! -name videos ! -name inscritos.txt "
+            "-exec cp -r {} . \\; && rm -rf mootube_tmp",
+            shell=True, check=True, capture_output=True, text=True
+        )
+        return True, versao
+    except subprocess.CalledProcessError as e:
+        print(f"[aplicar_versao] erro: {e.stderr}")
+        subprocess.run(f"rm -rf {tmp_dir}", shell=True)
+        return False, str(e)
+    except subprocess.TimeoutExpired:
+        subprocess.run(f"rm -rf {tmp_dir}", shell=True)
+        return False, "timeout"
+
+
+@app.route("/trocar_versao_dropdown")
+def trocar_versao_dropdown():
+    """Troca versão via dropdown. sha vazio = pega o main (mais recente)."""
+    sha = request.args.get("sha", "").strip()
+    versao = request.args.get("versao", "").strip() or "mais recente"
+
+    if sha:
+        # versão específica: valida o sha
+        if not re.match(r"^[a-f0-9]{7,40}$", sha):
+            return render_template("update-error.html"), 400
+        ok, _ = _aplicar_versao(sha=sha, versao=versao)
+    else:
+        # sem sha: pega o main (mais recente)
+        ok, _ = _aplicar_versao(sha=None, versao=versao)
+
+    if ok:
+        return render_template("update-sucess.html", versao=versao)
+    return render_template("update-error.html")
+
+
+# ------------------------------------------------------------------
 # Rotas
 # ------------------------------------------------------------------
 @app.route('/')
@@ -289,7 +410,9 @@ def index():
         tem_atualizacao=tem_atualizacao,
         versao=versao,
         notificacao=notificacao_ativa,
-        notificacao_global=notificacao_global
+        notificacao_global=notificacao_global,
+        versoes=listar_versoes_github(),
+        versao_atual=versao_atual_local()
     )
 
 
@@ -517,24 +640,6 @@ def add_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     return response
-
-
-@app.route("/atualizar")
-def atualizar():
-    try:
-        subprocess.run(
-            ["pip", "install", "-U", "flask", "yt-dlp", "feedparser", "--break-system-packages"],
-            check=True, capture_output=True
-        )
-        subprocess.run(
-            "git clone https://github.com/mootube-project/mootube && "
-            "cp -r mootube/* . && rm -rf mootube",
-            shell=True, check=True, capture_output=True
-        )
-        return render_template('update-sucess.html')
-    except subprocess.CalledProcessError as e:
-        print(f"Erro: {e.stderr}")
-        return render_template('update-error.html')
 
 
 @app.route('/deletar/<nome_video>', methods=['GET'])
