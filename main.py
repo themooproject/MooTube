@@ -9,6 +9,7 @@ import json
 import os
 import re
 import time
+import threading
 import requests
 import feedparser
 from pathlib import Path
@@ -29,6 +30,7 @@ DOWNLOAD_TIMEOUT = 300
 RATE_LIMIT = 15
 FEED_CACHE_TTL = 900
 INSCRITOS_FILE = "inscritos.txt"
+CONFIG_FILE = "config.json"
 
 # Config do repositório GitHub (usado pra listar/trocar versões)
 GITHUB_USUARIO = "themooproject"
@@ -40,12 +42,101 @@ notificacao_global = None
 _feed_cache = {"ts": 0, "dados": []}
 _versoes_cache = {"ts": 0, "dados": []}
 
+# ------------------------------------------------------------------
+# CONFIG (features on/off)
+# ------------------------------------------------------------------
+CONFIG_PADRAO = {
+    "feed_ativo": True,
+    "urls_ativo": True,
+    "features_ativo": True,
+    "select_versao_ativo": True,
+    "pesquisa_ativo": True,
+    "notificacoes_globais_ativo": True,
+}
+_config_cache = None
+
+
+def _carregar_config():
+    global _config_cache
+    if _config_cache is not None:
+        return _config_cache
+    cfg = dict(CONFIG_PADRAO)
+    try:
+        with open(CONFIG_FILE) as f:
+            salvo = json.load(f)
+        if isinstance(salvo, dict):
+            cfg.update({k: v for k, v in salvo.items() if k in CONFIG_PADRAO})
+    except Exception:
+        pass
+    _config_cache = cfg
+    return cfg
+
+
+def _salvar_config(cfg):
+    global _config_cache
+    _config_cache = cfg
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as e:
+        print(f"[config] erro ao salvar: {e}")
+
+
+def get_config():
+    return dict(_carregar_config())
+
+
+def set_config(chave, valor):
+    if chave not in CONFIG_PADRAO:
+        return False
+    cfg = _carregar_config()
+    cfg[chave] = bool(valor)
+    _salvar_config(cfg)
+    return True
+
+
+def feature_ativa(chave):
+    return bool(_carregar_config().get(chave, CONFIG_PADRAO.get(chave, True)))
+
+
+# ------------------------------------------------------------------
+# Ações de sistema (threads em background)
+# ------------------------------------------------------------------
+def _executar_em_background(cmd):
+    def _run():
+        time.sleep(1.5)
+        try:
+            subprocess.run(cmd, shell=True, timeout=30)
+        except Exception as e:
+            print(f"[sistema] erro ao executar '{cmd}': {e}")
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def reiniciar_mootube():
+    # mata o processo atual (a regex pega o nome "import subprocess.py")
+    _executar_em_background(
+        "pkill -f 'import subprocess.py' || true; "
+        "sleep 1; "
+        "nohup python3 'import subprocess.py' > mootube.log 2>&1 &"
+    )
+
+
+def desligar_mootube():
+    _executar_em_background("pkill -f 'import subprocess.py' || true")
+
+
+def reiniciar_sistema():
+    _executar_em_background("sudo reboot")
+
+
+def desligar_sistema():
+    _executar_em_background("sudo shutdown -h now")
+
 
 # ------------------------------------------------------------------
 # Inscritos
 # ------------------------------------------------------------------
 def ler_inscritos():
-    """Retorna lista de (channel_id, nome)."""
     try:
         with open(INSCRITOS_FILE) as f:
             linhas = [l.strip() for l in f if l.strip() and not l.startswith("#")]
@@ -84,7 +175,6 @@ def remover_inscrito(channel_id):
 
 
 def registrar_canal_do_video(url_ou_id):
-    """Pega channel_id do vídeo e adiciona em inscritos.txt."""
     try:
         r = subprocess.run(
             ["yt-dlp", url_ou_id, "--dump-json",
@@ -171,6 +261,9 @@ def notificar(mensagem):
 
 def verificar_notificacao_global():
     global notificacao_global
+    if not feature_ativa("notificacoes_globais_ativo"):
+        notificacao_global = None
+        return
     try:
         response = requests.get(
             'https://raw.githubusercontent.com/themooproject/mootube/main/notification.txt',
@@ -290,7 +383,6 @@ def versao_atual_local():
 
 
 def listar_versoes_github():
-    """Lista todas as versões do version.txt no GitHub (cache de 10min)."""
     agora = time.time()
     if agora - _versoes_cache["ts"] < 600 and _versoes_cache["dados"]:
         return _versoes_cache["dados"]
@@ -329,18 +421,11 @@ def listar_versoes_github():
 
 
 def _aplicar_versao(sha=None, versao="desconhecida"):
-    """
-    Clona o repo e, se sha for passado, faz checkout nele.
-    Se sha for None, pega o main (versão mais recente).
-    Copia tudo pro diretório atual, exceto videos/ e inscritos.txt.
-    Retorna (ok, mensagem).
-    """
     tmp_dir = "mootube_tmp"
     try:
         subprocess.run(f"rm -rf {tmp_dir}", shell=True,
                        capture_output=True, text=True)
 
-        # 1. Clona
         subprocess.run(
             ["git", "clone",
              f"https://github.com/{GITHUB_USUARIO}/{GITHUB_REPO}.git",
@@ -348,7 +433,6 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
             check=True, capture_output=True, text=True, timeout=120
         )
 
-        # 2. Checkout (se for versão específica)
         if sha:
             subprocess.run(
                 ["git", "checkout", sha],
@@ -356,10 +440,9 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
                 check=True, capture_output=True, text=True, timeout=60
             )
 
-        # 3. Copia tudo, exceto videos/ e inscritos.txt
         subprocess.run(
             "find mootube_tmp -mindepth 1 -maxdepth 1 "
-            "! -name videos ! -name inscritos.txt "
+            "! -name videos ! -name inscritos.txt ! -name config.json "
             "-exec cp -r {} . \\; && rm -rf mootube_tmp",
             shell=True, check=True, capture_output=True, text=True
         )
@@ -375,17 +458,14 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
 
 @app.route("/trocar_versao_dropdown")
 def trocar_versao_dropdown():
-    """Troca versão via dropdown. sha vazio = pega o main (mais recente)."""
     sha = request.args.get("sha", "").strip()
     versao = request.args.get("versao", "").strip() or "mais recente"
 
     if sha:
-        # versão específica: valida o sha
         if not re.match(r"^[a-f0-9]{7,40}$", sha):
             return render_template("update-error.html"), 400
         ok, _ = _aplicar_versao(sha=sha, versao=versao)
     else:
-        # sem sha: pega o main (mais recente)
         ok, _ = _aplicar_versao(sha=None, versao=versao)
 
     if ok:
@@ -399,7 +479,7 @@ def trocar_versao_dropdown():
 @app.route('/')
 def index():
     global notificacao_ativa
-    urls = ler_urls_do_arquivo()
+    urls = ler_urls_do_arquivo() if feature_ativa("urls_ativo") else []
     tem_atualizacao, versao = verificar_atualizacao()
     verificar_notificacao_global()
 
@@ -412,17 +492,22 @@ def index():
         notificacao=notificacao_ativa,
         notificacao_global=notificacao_global,
         versoes=listar_versoes_github(),
-        versao_atual=versao_atual_local()
+        versao_atual=versao_atual_local(),
+        config=get_config(),
     )
 
 
 @app.route('/feed-api')
 def feed_api():
+    if not feature_ativa("feed_ativo"):
+        return jsonify([])
     return jsonify(buscar_feed_cached())
 
 
 @app.route('/feed-canais')
 def feed_canais():
+    if not feature_ativa("feed_ativo"):
+        return jsonify([])
     return jsonify([
         {"channel_id": cid, "nome": nome}
         for cid, nome in ler_inscritos()
@@ -431,6 +516,8 @@ def feed_canais():
 
 @app.route('/feed-remover', methods=['POST'])
 def feed_remover():
+    if not feature_ativa("feed_ativo"):
+        return jsonify({"ok": False, "erro": "feed desativado"}), 403
     cid = request.form.get("channel_id", "").strip()
     if not cid:
         return jsonify({"ok": False, "erro": "channel_id vazio"}), 400
@@ -442,6 +529,8 @@ def feed_remover():
 @app.route('/feed-mais')
 @rate_limit
 def feed_mais():
+    if not feature_ativa("feed_ativo"):
+        return jsonify([])
     try:
         invalidar_cache_feed()
         return jsonify(buscar_feed(60))
@@ -477,6 +566,8 @@ def serve_video(nome_video):
 @app.route('/url', methods=['POST'])
 @rate_limit
 def baixar_urls():
+    if not feature_ativa("urls_ativo"):
+        return "Feature de URLs desativada nas configurações.", 403
     urls = ler_urls_do_arquivo()
     if not urls:
         return "Nenhuma URL encontrada no arquivo urls.txt.", 400
@@ -515,6 +606,9 @@ def baixar_urls():
 @app.route('/pesquisar')
 @rate_limit
 def pesquisar():
+    if not feature_ativa("pesquisa_ativo"):
+        return "Pesquisa desativada nas configurações.", 403
+
     termo = request.args.get("busca", "").strip()
 
     if not termo:
@@ -541,7 +635,6 @@ def pesquisar():
             print(f"Erro: {e}")
             return render_template('error.html')
 
-    # não é URL: mostra resultados com botão Baixar
     try:
         resultados = buscar_resultados(termo, quantidade=12)
     except Exception as e:
@@ -554,7 +647,6 @@ def pesquisar():
 
 
 def buscar_resultados(termo, quantidade=12):
-    """Busca via yt-dlp (ytsearch) — sem key, sem tubescrape."""
     termo = re.sub(r'[;&|`$<>]', '', termo).strip()[:MAX_SEARCH_LENGTH]
     if not termo:
         return []
@@ -590,6 +682,9 @@ def buscar_resultados(termo, quantidade=12):
 @app.route('/baixar_feed', methods=['POST'])
 @rate_limit
 def baixar_feed():
+    if not feature_ativa("feed_ativo"):
+        return jsonify({"ok": False, "erro": "Feed desativado"}), 403
+
     video_id = request.form.get("video_id", "").strip()
     if not re.match(r'^[A-Za-z0-9_-]{6,20}$', video_id):
         return jsonify({"ok": False, "erro": "ID inválido"}), 400
@@ -664,6 +759,48 @@ def features():
     except Exception:
         pass
     return render_template("features.html", versao=versao)
+
+
+# ------------------------------------------------------------------
+# CONFIGURAÇÕES (rotas do menu)
+# ------------------------------------------------------------------
+@app.route("/configuracoes")
+def configuracoes():
+    return render_template("config.html", config=get_config())
+
+
+@app.route("/config-api")
+def config_api():
+    return jsonify(get_config())
+
+
+@app.route("/config-toggle", methods=["POST"])
+def config_toggle():
+    chave = request.form.get("chave", "").strip()
+    valor = request.form.get("valor", "").strip().lower() in ("1", "true", "on", "yes")
+    if not set_config(chave, valor):
+        return jsonify({"ok": False, "erro": "chave inválida"}), 400
+    if chave in ("feed_ativo", "urls_ativo"):
+        invalidar_cache_feed()
+    return jsonify({"ok": True, "chave": chave, "valor": valor})
+
+
+@app.route("/config-acao", methods=["POST"])
+def config_acao():
+    acao = request.form.get("acao", "").strip()
+    if acao == "reiniciar_mootube":
+        reiniciar_mootube()
+        return jsonify({"ok": True, "msg": "MooTube reiniciando..."})
+    elif acao == "desligar_mootube":
+        desligar_mootube()
+        return jsonify({"ok": True, "msg": "MooTube desligando..."})
+    elif acao == "reiniciar_sistema":
+        reiniciar_sistema()
+        return jsonify({"ok": True, "msg": "Sistema reiniciando..."})
+    elif acao == "desligar_sistema":
+        desligar_sistema()
+        return jsonify({"ok": True, "msg": "Sistema desligando..."})
+    return jsonify({"ok": False, "erro": "ação desconhecida"}), 400
 
 
 if __name__ == '__main__':
