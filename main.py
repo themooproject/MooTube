@@ -8,6 +8,8 @@ subprocess.run(
 import json
 import os
 import re
+import sys
+import signal
 import time
 import threading
 import requests
@@ -31,6 +33,7 @@ RATE_LIMIT = 15
 FEED_CACHE_TTL = 900
 INSCRITOS_FILE = "inscritos.txt"
 CONFIG_FILE = "config.json"
+PID_FILE = "mootube.pid"
 
 # Config do repositório GitHub (usado pra listar/trocar versões)
 GITHUB_USUARIO = "themooproject"
@@ -41,6 +44,18 @@ notificacao_ativa = None
 notificacao_global = None
 _feed_cache = {"ts": 0, "dados": []}
 _versoes_cache = {"ts": 0, "dados": []}
+
+
+# ------------------------------------------------------------------
+# PID (pra reiniciar/desligar com signal puro)
+# ------------------------------------------------------------------
+def _salvar_pid():
+    try:
+        with open(PID_FILE, "w") as f:
+            f.write(str(os.getpid()))
+    except Exception as e:
+        print(f"[pid] erro ao salvar: {e}")
+
 
 # ------------------------------------------------------------------
 # CONFIG (features on/off)
@@ -100,37 +115,67 @@ def feature_ativa(chave):
 
 
 # ------------------------------------------------------------------
-# Ações de sistema (threads em background)
+# Controle do MooTube — signal puro, sem subprocess
 # ------------------------------------------------------------------
-def _executar_em_background(cmd):
+def _desligar_suave():
+    """Manda SIGINT pro próprio processo (equivalente a Ctrl+C)."""
+    try:
+        os.kill(os.getpid(), signal.SIGINT)
+    except Exception as e:
+        print(f"[desligar] erro: {e}")
+
+
+def desligar_mootube():
+    """Agenda o desligamento depois da resposta HTTP sair."""
     def _run():
-        time.sleep(1.5)
-        try:
-            subprocess.run(cmd, shell=True, timeout=30)
-        except Exception as e:
-            print(f"[sistema] erro ao executar '{cmd}': {e}")
+        time.sleep(1.0)
+        _desligar_suave()
     threading.Thread(target=_run, daemon=True).start()
 
 
 def reiniciar_mootube():
-    # mata o processo atual (a regex pega o nome "import subprocess.py")
-    _executar_em_background(
-        "pkill -f 'import subprocess.py' || true; "
-        "sleep 1; "
-        "nohup python3 'import subprocess.py' > mootube.log 2>&1 &"
-    )
+    def _run():
+        time.sleep(1.0)
+        python = sys.executable or "python3"
+        script = os.path.abspath(sys.argv[0]) if sys.argv and sys.argv[0] else None
+        if not script or not os.path.exists(script):
+            print("[reiniciar] não achei o script pra re-executar")
+            return
+        # 1. relança em processo novo, totalmente desacoplado
+        subprocess.Popen(
+            [python, script],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            cwd=os.path.dirname(script) or None,
+        )
+        # 2. agora sim mata o processo atual
+        os.kill(os.getpid(), signal.SIGINT)
+    threading.Thread(target=_run, daemon=True).start()
 
 
-def desligar_mootube():
-    _executar_em_background("pkill -f 'import subprocess.py' || true")
-
-
+# ------------------------------------------------------------------
+# Controle do sistema (aqui sim precisa de privilégio externo)
+# ------------------------------------------------------------------
 def reiniciar_sistema():
-    _executar_em_background("sudo reboot")
+    def _run():
+        time.sleep(1.5)
+        try:
+            os.system("sudo reboot")
+        except Exception as e:
+            print(f"[sistema] erro reboot: {e}")
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def desligar_sistema():
-    _executar_em_background("sudo shutdown -h now")
+    def _run():
+        time.sleep(1.5)
+        try:
+            os.system("sudo shutdown -h now")
+        except Exception as e:
+            print(f"[sistema] erro shutdown: {e}")
+    threading.Thread(target=_run, daemon=True).start()
 
 
 # ------------------------------------------------------------------
@@ -442,7 +487,7 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
 
         subprocess.run(
             "find mootube_tmp -mindepth 1 -maxdepth 1 "
-            "! -name videos ! -name inscritos.txt ! -name config.json "
+            "! -name videos ! -name inscritos.txt ! -name config.json ! -name mootube.pid "
             "-exec cp -r {} . \\; && rm -rf mootube_tmp",
             shell=True, check=True, capture_output=True, text=True
         )
@@ -803,5 +848,10 @@ def config_acao():
     return jsonify({"ok": False, "erro": "ação desconhecida"}), 400
 
 
+# ------------------------------------------------------------------
+# Salva o PID e sobe o servidor
+# ------------------------------------------------------------------
+_salvar_pid()
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, use_reloader=True, debug=False)
+    app.run(host='0.0.0.0', port=5000, use_reloader=False, debug=False)
