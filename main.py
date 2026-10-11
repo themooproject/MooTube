@@ -722,14 +722,38 @@ def buscar_resultados(termo, quantidade=12):
             "thumb": f"https://i.ytimg.com/vi/{vid}/mqdefault.jpg",
         })
     return out
-
 @app.route('/baixar_feed', methods=['POST'])
 @rate_limit
-def baixar_feed()
+def baixar_feed():
     video_id = request.form.get("video_id", "").strip()
     if not re.match(r'^[A-Za-z0-9_-]{6,20}$', video_id):
         return jsonify({"ok": False, "erro": "ID inválido"}), 400
-    ...
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    videos_path = Path(PASTA_VIDEOS).resolve()
+
+    registrar_canal_do_video(url)
+
+    cmd = [
+        "yt-dlp", url,
+        "-o", str(videos_path / "%(title)s.%(ext)s"),
+        "--no-warnings", "--restrict-filenames",
+        "--no-playlist", "--socket-timeout", "30"
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True,
+                       text=True, timeout=DOWNLOAD_TIMEOUT)
+        atualizar_lista_videos()
+        invalidar_cache_feed()
+        return jsonify({"ok": True})
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "erro": "Timeout"}), 504
+    except subprocess.CalledProcessError as e:
+        print(f"[baixar_feed] erro: {e.stderr}")
+        return jsonify({"ok": False, "erro": "Falha no download"}), 500
+    except FileNotFoundError:
+        print("[baixar_feed] yt-dlp não encontrado no PATH")
+        return jsonify({"ok": False, "erro": "yt-dlp não instalado"}), 500
 
     video_id = request.form.get("video_id", "").strip()
     if not re.match(r'^[A-Za-z0-9_-]{6,20}$', video_id):
