@@ -216,6 +216,10 @@
 </div>
 {% endif %}
 
+<div class="update-banner" id="banner-offline" style="display:none;">
+    📡 Sem conexão com a internet
+</div>
+
 <div class="videos">
     <h2 id="biblioteca-titulo">📁 Sua biblioteca ({{ videos|length }} vídeos)</h2>
     <div class="video-grid" id="biblioteca-grid">
@@ -247,6 +251,43 @@
 {% endif %}
 
 <script>
+    // ===== Detecção de internet =====
+    (function() {
+        const banner = document.getElementById('banner-offline');
+        if (!banner) return;
+
+        function verificar() {
+            const img = new Image();
+            let resolvido = false;
+
+            const timeout = setTimeout(() => {
+                if (resolvido) return;
+                resolvido = true;
+                banner.style.display = 'block';
+            }, 4000);
+
+            img.onload = () => {
+                if (resolvido) return;
+                resolvido = true;
+                clearTimeout(timeout);
+                banner.style.display = 'none';
+            };
+            img.onerror = () => {
+                if (resolvido) return;
+                resolvido = true;
+                clearTimeout(timeout);
+                banner.style.display = 'block';
+            };
+
+            img.src = 'https://www.google.com/favicon.ico?t=' + Date.now();
+        }
+
+        window.addEventListener('online', verificar);
+        window.addEventListener('offline', verificar);
+        verificar();
+        setInterval(verificar, 10000);
+    })();
+
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;',
@@ -269,129 +310,131 @@
             </div>
         `;
     }
-function renderBiblioteca(videos) {
-    const grid = document.getElementById('biblioteca-grid');
-    document.getElementById('biblioteca-titulo')
-        .textContent = `📁 Sua biblioteca (${videos.length} vídeos)`;
-    if (videos.length === 0) {
-        grid.innerHTML = '<p>Nenhum vídeo baixado ainda.</p>';
-        return;
-    }
-    grid.innerHTML = videos.map(renderCardBiblioteca).join('');
-}
 
-{% if config.select_versao_ativo %}
-function prepararTroca() {
-    const select = document.getElementById('select-versao');
-    const opt = select.selectedOptions[0];
-    const sha = opt.value;
-    const versao = opt.dataset.versao;
-    if (sha === '__latest__') {
-        document.getElementById('input-sha').value = '';
-        document.getElementById('input-versao').value = 'mais recente';
-        return confirm('Baixar a versão MAIS RECENTE?');
-    } else {
-        document.getElementById('input-sha').value = sha;
-        document.getElementById('input-versao').value = versao;
-        return confirm('Trocar pra versão ' + versao + '?');
+    function renderBiblioteca(videos) {
+        const grid = document.getElementById('biblioteca-grid');
+        document.getElementById('biblioteca-titulo')
+            .textContent = `📁 Sua biblioteca (${videos.length} vídeos)`;
+        if (videos.length === 0) {
+            grid.innerHTML = '<p>Nenhum vídeo baixado ainda.</p>';
+            return;
+        }
+        grid.innerHTML = videos.map(renderCardBiblioteca).join('');
     }
-}
-{% endif %}
 
-{% if config.pesquisa_ativo %}
-(function() {
-    const input = document.querySelector('input[name="busca"]');
-    if (!input) return;
-    let timeout = null;
-    input.addEventListener('input', function() {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-            const termo = this.value.trim();
-            fetch('/filtrar?busca=' + encodeURIComponent(termo))
-                .then(res => res.json())
-                .then(videos => {
-                    const grid = document.getElementById('biblioteca-grid');
-                    if (!grid) return;
-                    if (videos.length === 0) {
-                        grid.innerHTML = '<p>Nenhum video encontrado</p>';
-                        return;
-                    }
-                    grid.innerHTML = videos.map(renderCardBiblioteca).join('');
-                });
-        }, 300);
-    });
-})();
-{% endif %}
-
-{% if config.notificacoes_globais_ativo %}
-const evento = new EventSource('/stream');
-evento.onmessage = function(e) {
-    const banner = document.getElementById('banner-global');
-    if (!banner) return;
-    if (e.data) {
-        banner.textContent = '🌐 ' + e.data;
-        banner.style.display = 'block';
-    } else {
-        banner.style.display = 'none';
+    {% if config.select_versao_ativo %}
+    function prepararTroca() {
+        const select = document.getElementById('select-versao');
+        const opt = select.selectedOptions[0];
+        const sha = opt.value;
+        const versao = opt.dataset.versao;
+        if (sha === '__latest__') {
+            document.getElementById('input-sha').value = '';
+            document.getElementById('input-versao').value = 'mais recente';
+            return confirm('Baixar a versão MAIS RECENTE?');
+        } else {
+            document.getElementById('input-sha').value = sha;
+            document.getElementById('input-versao').value = versao;
+            return confirm('Trocar pra versão ' + versao + '?');
+        }
     }
-};
-{% endif %}
-            function bindBotoesBaixar() {
-            document.querySelectorAll('.btn-baixar').forEach(btn => {
-                if (btn.dataset.bound === '1') return;
-                btn.dataset.bound = '1';
-                btn.addEventListener('click', async () => {
-                    const id = btn.dataset.id;
-                    const original = btn.textContent;
-                    btn.disabled = true;
-                    btn.textContent = '⏳ Baixando...';
-                    try {
-                        const res = await fetch('/baixar_video', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: 'video_id=' + encodeURIComponent(id)
-                        });
-                        const data = await res.json();
-                        if (data.ok) {
-                            btn.textContent = '✅ Baixado';
-                            const r = await fetch('/api/videos');
-                            const lista = await r.json();
-                            renderBiblioteca(lista);
-                            carregarCanais();
-                        } else {
-                            btn.textContent = '❌ ' + (data.erro || 'Erro');
-                            setTimeout(() => {
-                                btn.textContent = original;
-                                btn.disabled = false;
-                            }, 2500);
+    {% endif %}
+
+    {% if config.pesquisa_ativo %}
+    (function() {
+        const input = document.querySelector('input[name="busca"]');
+        if (!input) return;
+        let timeout = null;
+        input.addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const termo = this.value.trim();
+                fetch('/filtrar?busca=' + encodeURIComponent(termo))
+                    .then(res => res.json())
+                    .then(videos => {
+                        const grid = document.getElementById('biblioteca-grid');
+                        if (!grid) return;
+                        if (videos.length === 0) {
+                            grid.innerHTML = '<p>Nenhum video encontrado</p>';
+                            return;
                         }
-                    } catch {
-                        btn.textContent = '❌ Falha';
+                        grid.innerHTML = videos.map(renderCardBiblioteca).join('');
+                    });
+            }, 300);
+        });
+    })();
+    {% endif %}
+
+    {% if config.notificacoes_globais_ativo %}
+    const evento = new EventSource('/stream');
+    evento.onmessage = function(e) {
+        const banner = document.getElementById('banner-global');
+        if (!banner) return;
+        if (e.data) {
+            banner.textContent = '🌐 ' + e.data;
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
+        }
+    };
+    {% endif %}
+
+    function bindBotoesBaixar() {
+        document.querySelectorAll('.btn-baixar').forEach(btn => {
+            if (btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                const original = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = '⏳ Baixando...';
+                try {
+                    const res = await fetch('/baixar_video', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'video_id=' + encodeURIComponent(id)
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        btn.textContent = '✅ Baixado';
+                        const r = await fetch('/api/videos');
+                        const lista = await r.json();
+                        renderBiblioteca(lista);
+                        carregarCanais();
+                    } else {
+                        btn.textContent = '❌ ' + (data.erro || 'Erro');
                         setTimeout(() => {
                             btn.textContent = original;
                             btn.disabled = false;
                         }, 2500);
                     }
-                });
+                } catch {
+                    btn.textContent = '❌ Falha';
+                    setTimeout(() => {
+                        btn.textContent = original;
+                        btn.disabled = false;
+                    }, 2500);
+                }
             });
-        }
-
-        const btnMais = document.getElementById('btn-mais');
-        btnMais.addEventListener('click', async () => {
-            const original = btnMais.textContent;
-            btnMais.disabled = true;
-            btnMais.textContent = '⏳ Atualizando...';
-            try {
-                await fetch('/feed-mais');
-                await carregarFeed();
-                await carregarCanais();
-            } catch {}
-            btnMais.textContent = original;
-            btnMais.disabled = false;
         });
+    }
 
-        carregarCanais();
-        carregarFeed();
-    </script>
+    const btnMais = document.getElementById('btn-mais');
+    btnMais.addEventListener('click', async () => {
+        const original = btnMais.textContent;
+        btnMais.disabled = true;
+        btnMais.textContent = '⏳ Atualizando...';
+        try {
+            await fetch('/feed-mais');
+            await carregarFeed();
+            await carregarCanais();
+        } catch {}
+        btnMais.textContent = original;
+        btnMais.disabled = false;
+    });
+
+    carregarCanais();
+    carregarFeed();
+</script>
 </body>
 </html>
