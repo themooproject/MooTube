@@ -723,12 +723,13 @@ def buscar_resultados(termo, quantidade=12):
         })
     return out
 
-
 @app.route('/baixar_feed', methods=['POST'])
 @rate_limit
-def baixar_feed():
-    if not feature_ativa("feed_ativo"):
-        return jsonify({"ok": False, "erro": "Feed desativado"}), 403
+def baixar_feed()
+    video_id = request.form.get("video_id", "").strip()
+    if not re.match(r'^[A-Za-z0-9_-]{6,20}$', video_id):
+        return jsonify({"ok": False, "erro": "ID inválido"}), 400
+    ...
 
     video_id = request.form.get("video_id", "").strip()
     if not re.match(r'^[A-Za-z0-9_-]{6,20}$', video_id):
