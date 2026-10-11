@@ -54,9 +54,6 @@ def _salvar_pid():
         print(f"[pid] erro ao salvar: {e}")
 
 
-# ------------------------------------------------------------------
-# CONFIG
-# ------------------------------------------------------------------
 CONFIG_PADRAO = {
     "feed_ativo": True,
     "urls_ativo": True,
@@ -111,9 +108,6 @@ def feature_ativa(chave):
     return bool(_carregar_config().get(chave, CONFIG_PADRAO.get(chave, True)))
 
 
-# ------------------------------------------------------------------
-# Controle do MooTube
-# ------------------------------------------------------------------
 def _desligar_suave():
     try:
         os.kill(os.getpid(), signal.SIGINT)
@@ -168,9 +162,6 @@ def desligar_sistema():
     threading.Thread(target=_run, daemon=True).start()
 
 
-# ------------------------------------------------------------------
-# Inscritos
-# ------------------------------------------------------------------
 def ler_inscritos():
     try:
         with open(INSCRITOS_FILE) as f:
@@ -228,9 +219,6 @@ def registrar_canal_do_video(url_ou_id):
         print(f"[inscritos] erro ao registrar: {e}")
 
 
-# ------------------------------------------------------------------
-# Feed
-# ------------------------------------------------------------------
 def buscar_feed(quantidade=60):
     videos = []
     for cid, nome in ler_inscritos():
@@ -276,9 +264,6 @@ def invalidar_cache_feed():
     _feed_cache["ts"] = 0
 
 
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
 def _parse_views(s):
     if not s:
         return 0
@@ -404,9 +389,6 @@ def verificar_atualizacao():
     return False, None
 
 
-# ------------------------------------------------------------------
-# Versões
-# ------------------------------------------------------------------
 def versao_atual_local():
     try:
         if os.path.exists("version.txt"):
@@ -421,7 +403,6 @@ def listar_versoes_github():
     agora = time.time()
     if agora - _versoes_cache["ts"] < 600 and _versoes_cache["dados"]:
         return _versoes_cache["dados"]
-
     try:
         url = f"https://api.github.com/repos/{GITHUB_USUARIO}/{GITHUB_REPO}/commits"
         r = requests.get(url, params={"path": "version.txt"}, timeout=15)
@@ -431,7 +412,6 @@ def listar_versoes_github():
     except Exception as e:
         print(f"[versoes] erro: {e}")
         return []
-
     versoes = []
     for c in commits:
         sha = c["sha"]
@@ -449,7 +429,6 @@ def listar_versoes_github():
             continue
         if versao:
             versoes.append({"versao": versao, "sha": sha, "data": data})
-
     _versoes_cache["dados"] = versoes
     _versoes_cache["ts"] = agora
     return versoes
@@ -460,21 +439,18 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
     try:
         subprocess.run(f"rm -rf {tmp_dir}", shell=True,
                        capture_output=True, text=True)
-
         subprocess.run(
             ["git", "clone",
              f"https://github.com/{GITHUB_USUARIO}/{GITHUB_REPO}.git",
              tmp_dir],
             check=True, capture_output=True, text=True, timeout=120
         )
-
         if sha:
             subprocess.run(
                 ["git", "checkout", sha],
                 cwd=tmp_dir,
                 check=True, capture_output=True, text=True, timeout=60
             )
-
         subprocess.run(
             "find mootube_tmp -mindepth 1 -maxdepth 1 "
             "! -name videos ! -name inscritos.txt ! -name config.json ! -name mootube.pid "
@@ -495,29 +471,23 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
 def trocar_versao_dropdown():
     sha = request.args.get("sha", "").strip()
     versao = request.args.get("versao", "").strip() or "mais recente"
-
     if sha:
         if not re.match(r"^[a-f0-9]{7,40}$", sha):
             return render_template("update-error.html"), 400
         ok, _ = _aplicar_versao(sha=sha, versao=versao)
     else:
         ok, _ = _aplicar_versao(sha=None, versao=versao)
-
     if ok:
         return render_template("update-sucess.html", versao=versao)
     return render_template("update-error.html")
 
 
-# ------------------------------------------------------------------
-# Rotas
-# ------------------------------------------------------------------
 @app.route('/')
 def index():
     global notificacao_ativa
     urls = ler_urls_do_arquivo() if feature_ativa("urls_ativo") else []
     tem_atualizacao, versao = verificar_atualizacao()
     verificar_notificacao_global()
-
     return render_template(
         'index.html',
         videos=todos_videos,
@@ -682,4 +652,171 @@ def pesquisar():
 
 
 def buscar_resultados(termo, quantidade=12):
-    termo =
+    termo = re.sub(r'[;&|`$<>]', '', termo).strip()[:MAX_SEARCH_LENGTH]
+    if not termo:
+        return []
+    try:
+        r = subprocess.run(
+            ["yt-dlp", f"ytsearch{quantidade}:{termo}",
+             "--dump-json", "--flat-playlist",
+             "--no-warnings", "--socket-timeout", "20"],
+            capture_output=True, text=True, timeout=60
+        )
+    except Exception as e:
+        print(f"[search] erro: {e}")
+        return []
+
+    out = []
+    for linha in r.stdout.strip().splitlines():
+        try:
+            info = json.loads(linha)
+        except json.JSONDecodeError:
+            continue
+        vid = info.get("id")
+        if not vid:
+            continue
+        out.append({
+            "id": vid,
+            "titulo": info.get("title", ""),
+            "canal": info.get("uploader") or info.get("channel") or "",
+            "thumb": f"https://i.ytimg.com/vi/{vid}/mqdefault.jpg",
+        })
+    return out
+
+
+@app.route('/baixar_video', methods=['POST'])
+@app.route('/baixar_feed', methods=['POST'])
+@rate_limit
+def baixar_video():
+    video_id = request.form.get("video_id", "").strip()
+    if not re.match(r'^[A-Za-z0-9_-]{6,20}$', video_id):
+        return jsonify({"ok": False, "erro": "ID inválido"}), 400
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    videos_path = Path(PASTA_VIDEOS).resolve()
+
+    registrar_canal_do_video(url)
+
+    cmd = [
+        "yt-dlp", url,
+        "-o", str(videos_path / "%(title)s.%(ext)s"),
+        "--no-warnings", "--restrict-filenames",
+        "--no-playlist", "--socket-timeout", "30"
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True,
+                       text=True, timeout=DOWNLOAD_TIMEOUT)
+        atualizar_lista_videos()
+        invalidar_cache_feed()
+        return jsonify({"ok": True})
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "erro": "Timeout"}), 504
+    except subprocess.CalledProcessError as e:
+        print(f"[baixar_video] erro: {e.stderr}")
+        return jsonify({"ok": False, "erro": "Falha no download"}), 500
+    except FileNotFoundError:
+        return jsonify({"ok": False, "erro": "yt-dlp não instalado"}), 500
+
+
+@app.route('/api/videos')
+def api_videos():
+    atualizar_lista_videos()
+    return jsonify(todos_videos)
+
+
+@app.route('/filtrar')
+def filtrar():
+    termo = request.args.get("busca", "").strip().lower()
+    if not termo:
+        return jsonify(todos_videos)
+    return jsonify([v for v in todos_videos if termo in v.lower()])
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
+
+
+@app.route('/deletar/<nome_video>', methods=['GET'])
+def deletar_video(nome_video):
+    try:
+        caminho = os.path.join(PASTA_VIDEOS, nome_video)
+        if os.path.exists(caminho):
+            os.remove(caminho)
+        atualizar_lista_videos()
+        return render_template('delete-sucess.html')
+    except Exception:
+        return render_template('delete-error.html')
+
+
+@app.route("/features")
+def features():
+    versao = "0.0.0"
+    try:
+        if os.path.exists("version.txt"):
+            with open("version.txt", "r") as f:
+                versao = f.read().strip()
+    except Exception:
+        pass
+    return render_template("features.html", versao=versao)
+
+
+@app.route("/configuracoes")
+def configuracoes():
+    return render_template("config.html", config=get_config())
+
+
+@app.route("/config-api")
+def config_api():
+    return jsonify(get_config())
+
+
+@app.route("/config-toggle", methods=["POST"])
+def config_toggle():
+    chave = request.form.get("chave", "").strip()
+    valor = request.form.get("valor", "").strip().lower() in ("1", "true", "on", "yes")
+    if not set_config(chave, valor):
+        return jsonify({"ok": False, "erro": "chave inválida"}), 400
+    if chave in ("feed_ativo", "urls_ativo"):
+        invalidar_cache_feed()
+    return jsonify({"ok": True, "chave": chave, "valor": valor})
+
+
+@app.route("/config-acao", methods=["POST"])
+def config_acao():
+    acao = request.form.get("acao", "").strip()
+    if acao == "reiniciar_mootube":
+        reiniciar_mootube()
+        return jsonify({"ok": True, "msg": "MooTube reiniciando..."})
+    elif acao == "desligar_mootube":
+        desligar_mootube()
+        return jsonify({"ok": True, "msg": "MooTube desligando..."})
+    elif acao == "reiniciar_sistema":
+        reiniciar_sistema()
+        return jsonify({"ok": True, "msg": "Sistema reiniciando..."})
+    elif acao == "desligar_sistema":
+        desligar_sistema()
+        return jsonify({"ok": True, "msg": "Sistema desligando..."})
+    return jsonify({"ok": False, "erro": "ação desconhecida"}), 400
+
+
+def _esperar_porta_livre(porta=5000, timeout=10):
+    inicio = time.time()
+    while time.time() - inicio < timeout:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("0.0.0.0", porta))
+                return True
+            except OSError:
+                time.sleep(0.3)
+    return False
+
+
+_salvar_pid()
+
+if __name__ == '__main__':
+    _esperar_porta_livre(5000)
+    app.run(host='0.0.0.0', port=5000, use_reloader=False, debug=False)
