@@ -35,6 +35,7 @@ FEED_CACHE_TTL = 900
 INSCRITOS_FILE = "inscritos.txt"
 CONFIG_FILE = "config.json"
 PID_FILE = "mootube.pid"
+PLAYLISTS_FILE = "playlists.json"
 
 GITHUB_USUARIO = "themooproject"
 GITHUB_REPO = "mootube"
@@ -370,6 +371,125 @@ def atualizar_lista_videos():
 atualizar_lista_videos()
 
 
+# =========================================================
+# ===== PLAYLISTS =========================================
+# =========================================================
+
+_playlists_cache = None
+
+
+def _carregar_playlists():
+    """Retorna dict: {nome_playlist: [nome_video, ...]}"""
+    global _playlists_cache
+    if _playlists_cache is not None:
+        return _playlists_cache
+    dados = {}
+    try:
+        with open(PLAYLISTS_FILE) as f:
+            salvo = json.load(f)
+        if isinstance(salvo, dict):
+            for nome, vids in salvo.items():
+                if isinstance(vids, list):
+                    dados[str(nome)] = [str(v) for v in vids]
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f"[playlists] erro ao carregar: {e}")
+    _playlists_cache = dados
+    return dados
+
+
+def _salvar_playlists(dados):
+    global _playlists_cache
+    _playlists_cache = dados
+    try:
+        with open(PLAYLISTS_FILE, "w") as f:
+            json.dump(dados, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[playlists] erro ao salvar: {e}")
+
+
+def listar_playlists():
+    return _carregar_playlists()
+
+
+def criar_playlist(nome):
+    nome = (nome or "").strip()[:80]
+    if not nome:
+        return False, "Nome vazio"
+    dados = _carregar_playlists()
+    if nome in dados:
+        return False, "Já existe uma playlist com esse nome"
+    dados[nome] = []
+    _salvar_playlists(dados)
+    return True, None
+
+
+def deletar_playlist(nome):
+    dados = _carregar_playlists()
+    if nome not in dados:
+        return False
+    del dados[nome]
+    _salvar_playlists(dados)
+    return True
+
+
+def renomear_playlist(nome_antigo, nome_novo):
+    nome_novo = (nome_novo or "").strip()[:80]
+    if not nome_novo:
+        return False, "Nome vazio"
+    dados = _carregar_playlists()
+    if nome_antigo not in dados:
+        return False, "Playlist não encontrada"
+    if nome_novo in dados and nome_novo != nome_antigo:
+        return False, "Já existe uma playlist com esse nome"
+    novos = {}
+    for k, v in dados.items():
+        if k == nome_antigo:
+            novos[nome_novo] = v
+        else:
+            novos[k] = v
+    _salvar_playlists(novos)
+    return True, None
+
+
+def adicionar_a_playlist(nome, video):
+    dados = _carregar_playlists()
+    if nome not in dados:
+        return False, "Playlist não encontrada"
+    if video in dados[nome]:
+        return False, "Vídeo já está na playlist"
+    dados[nome].append(video)
+    _salvar_playlists(dados)
+    return True, None
+
+
+def remover_da_playlist(nome, video):
+    dados = _carregar_playlists()
+    if nome not in dados:
+        return False, "Playlist não encontrada"
+    if video not in dados[nome]:
+        return False, "Vídeo não está na playlist"
+    dados[nome].remove(video)
+    _salvar_playlists(dados)
+    return True, None
+
+
+def remover_video_de_todas_playlists(video):
+    dados = _carregar_playlists()
+    alterou = False
+    for nome in list(dados.keys()):
+        if video in dados[nome]:
+            dados[nome].remove(video)
+            alterou = True
+    if alterou:
+        _salvar_playlists(dados)
+
+
+# =========================================================
+# ===== VERSÕES ===========================================
+# =========================================================
+
 def verificar_atualizacao():
     try:
         local_version = "0.0.0"
@@ -453,7 +573,8 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
             )
         subprocess.run(
             "find mootube_tmp -mindepth 1 -maxdepth 1 "
-            "! -name videos ! -name inscritos.txt ! -name config.json ! -name mootube.pid "
+            "! -name videos ! -name inscritos.txt ! -name config.json "
+            "! -name mootube.pid ! -name playlists.json "
             "-exec cp -r {} . \\; && rm -rf mootube_tmp",
             shell=True, check=True, capture_output=True, text=True
         )
@@ -466,6 +587,10 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
         subprocess.run(f"rm -rf {tmp_dir}", shell=True)
         return False, "timeout"
 
+
+# =========================================================
+# ===== ROTAS =============================================
+# =========================================================
 
 @app.route("/trocar_versao_dropdown")
 def trocar_versao_dropdown():
@@ -745,6 +870,7 @@ def deletar_video(nome_video):
         caminho = os.path.join(PASTA_VIDEOS, nome_video)
         if os.path.exists(caminho):
             os.remove(caminho)
+        remover_video_de_todas_playlists(nome_video)
         atualizar_lista_videos()
         return render_template('delete-sucess.html')
     except Exception:
@@ -800,6 +926,57 @@ def config_acao():
         desligar_sistema()
         return jsonify({"ok": True, "msg": "Sistema desligando..."})
     return jsonify({"ok": False, "erro": "ação desconhecida"}), 400
+
+
+# =========================================================
+# ===== ROTAS DE PLAYLISTS ================================
+# =========================================================
+
+@app.route("/playlists-api")
+def playlists_api():
+    return jsonify(listar_playlists())
+
+
+@app.route("/playlist-criar", methods=["POST"])
+def playlist_criar():
+    nome = request.form.get("nome", "").strip()
+    ok, erro = criar_playlist(nome)
+    return jsonify({"ok": ok, "erro": erro}), (200 if ok else 400)
+
+
+@app.route("/playlist-deletar", methods=["POST"])
+def playlist_deletar():
+    nome = request.form.get("nome", "").strip()
+    ok = deletar_playlist(nome)
+    return jsonify({"ok": ok}), (200 if ok else 404)
+
+
+@app.route("/playlist-renomear", methods=["POST"])
+def playlist_renomear():
+    antigo = request.form.get("antigo", "").strip()
+    novo = request.form.get("novo", "").strip()
+    ok, erro = renomear_playlist(antigo, novo)
+    return jsonify({"ok": ok, "erro": erro}), (200 if ok else 400)
+
+
+@app.route("/playlist-adicionar", methods=["POST"])
+def playlist_adicionar():
+    nome = request.form.get("playlist", "").strip()
+    video = request.form.get("video", "").strip()
+    if not nome or not video:
+        return jsonify({"ok": False, "erro": "dados incompletos"}), 400
+    if video not in todos_videos:
+        return jsonify({"ok": False, "erro": "vídeo não encontrado"}), 404
+    ok, erro = adicionar_a_playlist(nome, video)
+    return jsonify({"ok": ok, "erro": erro}), (200 if ok else 400)
+
+
+@app.route("/playlist-remover", methods=["POST"])
+def playlist_remover():
+    nome = request.form.get("playlist", "").strip()
+    video = request.form.get("video", "").strip()
+    ok, erro = remover_da_playlist(nome, video)
+    return jsonify({"ok": ok, "erro": erro}), (200 if ok else 400)
 
 
 def _esperar_porta_livre(porta=5000, timeout=10):
