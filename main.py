@@ -501,6 +501,7 @@ def _aplicar_versao(sha=None, versao="desconhecida"):
         return False, "timeout"
 
 
+
 @app.route("/trocar_versao_dropdown")
 def trocar_versao_dropdown():
     sha = request.args.get("sha", "").strip()
@@ -871,7 +872,38 @@ def config_acao():
         desligar_sistema()
         return jsonify({"ok": True, "msg": "Sistema desligando..."})
     return jsonify({"ok": False, "erro": "ação desconhecida"}), 400
+@app.route('/baixar_video', methods=['POST'])
+@rate_limit
+def baixar_video():
+    """Baixa um vídeo por ID — usado pela página de busca."""
+    video_id = request.form.get("video_id", "").strip()
+    if not re.match(r'^[A-Za-z0-9_-]{6,20}$', video_id):
+        return jsonify({"ok": False, "erro": "ID inválido"}), 400
 
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    videos_path = Path(PASTA_VIDEOS).resolve()
+
+    registrar_canal_do_video(url)
+
+    cmd = [
+        "yt-dlp", url,
+        "-o", str(videos_path / "%(title)s.%(ext)s"),
+        "--no-warnings", "--restrict-filenames",
+        "--no-playlist", "--socket-timeout", "30"
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True,
+                       text=True, timeout=DOWNLOAD_TIMEOUT)
+        atualizar_lista_videos()
+        invalidar_cache_feed()
+        return jsonify({"ok": True})
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "erro": "Timeout"}), 504
+    except subprocess.CalledProcessError as e:
+        print(f"[baixar_video] erro: {e.stderr}")
+        return jsonify({"ok": False, "erro": "Falha no download"}), 500
+    except FileNotFoundError:
+        return jsonify({"ok": False, "erro": "yt-dlp não instalado"}), 500
 
 # ------------------------------------------------------------------
 # Salva o PID e sobe o servidor
