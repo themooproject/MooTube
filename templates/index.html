@@ -52,7 +52,6 @@
 
         h1 { margin: 0; }
 
-        /* ---------- DROPDOWN DE VERSÕES ---------- */
         #select-versao {
             background-image: url("/static/cow-texture.jpg");
             background-repeat: repeat;
@@ -166,7 +165,6 @@
         }
         .btn-mais[disabled] { opacity: 0.6; cursor: wait; }
 
-        /* ---------- CHIPS DE CANAIS ---------- */
         #canais-container {
             display: flex;
             flex-wrap: wrap;
@@ -339,7 +337,6 @@
     </div>
     {% endif %}
 
-    <!-- ===================== BIBLIOTECA ===================== -->
     <div class="videos">
         <h2 id="biblioteca-titulo">📁 Sua biblioteca ({{ videos|length }} vídeos)</h2>
         <div class="video-grid" id="biblioteca-grid">
@@ -358,7 +355,6 @@
         </div>
     </div>
 
-    <!-- ===================== FEED ===================== -->
     {% if config.feed_ativo %}
     <div class="feed">
         <h2>📡 Feed</h2>
@@ -375,65 +371,6 @@
     {% endif %}
 
     <script>
-        {% if config.select_versao_ativo %}
-        // ---------- Trocar versão pelo dropdown ----------
-        function prepararTroca() {
-            const select = document.getElementById('select-versao');
-            const opt = select.selectedOptions[0];
-            const sha = opt.value;
-            const versao = opt.dataset.versao;
-
-            if (sha === '__latest__') {
-                document.getElementById('input-sha').value = '';
-                document.getElementById('input-versao').value = 'mais recente';
-                return confirm('Baixar a versão MAIS RECENTE?');
-            } else {
-                document.getElementById('input-sha').value = sha;
-                document.getElementById('input-versao').value = versao;
-                return confirm('Trocar pra versão ' + versao + '?');
-            }
-        }
-        {% endif %}
-
-        {% if config.pesquisa_ativo %}
-        // ---------- Filtro incremental da biblioteca ----------
-        const input = document.querySelector('input[name="busca"]');
-        let timeout = null;
-
-        input.addEventListener('input', function() {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                const termo = this.value.trim();
-                fetch('/filtrar?busca=' + encodeURIComponent(termo))
-                    .then(res => res.json())
-                    .then(videos => {
-                        const grid = document.getElementById('biblioteca-grid');
-                        if (videos.length === 0) {
-                            grid.innerHTML = '<p>Nenhum video encontrado</p>';
-                            return;
-                        }
-                        grid.innerHTML = videos.map(renderCardBiblioteca).join('');
-                    });
-            }, 300);
-        });
-        {% endif %}
-
-        {% if config.notificacoes_globais_ativo %}
-        // ---------- SSE ----------
-        const evento = new EventSource('/stream');
-        evento.onmessage = function(e) {
-            const banner = document.getElementById('banner-global');
-            if (!banner) return;
-            if (e.data) {
-                banner.textContent = '🌐 ' + e.data;
-                banner.style.display = 'block';
-            } else {
-                banner.style.display = 'none';
-            }
-        };
-        {% endif %}
-
-        // ---------- Helpers ----------
         function escapeHtml(s) {
             return String(s).replace(/[&<>"']/g, c => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;',
@@ -441,7 +378,6 @@
             })[c]);
         }
 
-        // ---------- Biblioteca ----------
         function renderCardBiblioteca(v) {
             const safe = escapeHtml(v);
             return `
@@ -469,8 +405,65 @@
             grid.innerHTML = videos.map(renderCardBiblioteca).join('');
         }
 
+        {% if config.select_versao_ativo %}
+        function prepararTroca() {
+            const select = document.getElementById('select-versao');
+            const opt = select.selectedOptions[0];
+            const sha = opt.value;
+            const versao = opt.dataset.versao;
+
+            if (sha === '__latest__') {
+                document.getElementById('input-sha').value = '';
+                document.getElementById('input-versao').value = 'mais recente';
+                return confirm('Baixar a versão MAIS RECENTE?');
+            } else {
+                document.getElementById('input-sha').value = sha;
+                document.getElementById('input-versao').value = versao;
+                return confirm('Trocar pra versão ' + versao + '?');
+            }
+        }
+        {% endif %}
+
+        {% if config.pesquisa_ativo %}
+        (function() {
+            const input = document.querySelector('input[name="busca"]');
+            if (!input) return;
+            let timeout = null;
+            input.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    const termo = this.value.trim();
+                    fetch('/filtrar?busca=' + encodeURIComponent(termo))
+                        .then(res => res.json())
+                        .then(videos => {
+                            const grid = document.getElementById('biblioteca-grid');
+                            if (!grid) return;
+                            if (videos.length === 0) {
+                                grid.innerHTML = '<p>Nenhum video encontrado</p>';
+                                return;
+                            }
+                            grid.innerHTML = videos.map(renderCardBiblioteca).join('');
+                        });
+                }, 300);
+            });
+        })();
+        {% endif %}
+
+        {% if config.notificacoes_globais_ativo %}
+        const evento = new EventSource('/stream');
+        evento.onmessage = function(e) {
+            const banner = document.getElementById('banner-global');
+            if (!banner) return;
+            if (e.data) {
+                banner.textContent = '🌐 ' + e.data;
+                banner.style.display = 'block';
+            } else {
+                banner.style.display = 'none';
+            }
+        };
+        {% endif %}
+
         {% if config.feed_ativo %}
-        // ---------- Feed ----------
         function renderCardFeed(r) {
             const titulo = escapeHtml(r.titulo || '');
             const canal = escapeHtml(r.canal || '');
@@ -508,7 +501,6 @@
                 });
         }
 
-        // ---------- Canais inscritos ----------
         function carregarCanais() {
             fetch('/feed-canais')
                 .then(r => r.json())
@@ -549,7 +541,6 @@
             });
         }
 
-        // ---------- Baixar ----------
         function bindBotoesBaixar() {
             document.querySelectorAll('.btn-baixar').forEach(btn => {
                 if (btn.dataset.bound === '1') return;
@@ -562,7 +553,7 @@
                     btn.textContent = '⏳ Baixando...';
 
                     try {
-                        const res = await fetch('/baixar_feed', {
+                        const res = await fetch('/baixar_video', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: 'video_id=' + encodeURIComponent(id)
@@ -589,32 +580,4 @@
                             btn.disabled = false;
                         }, 2500);
                     }
-                });
-            });
-        }
-
-        // ---------- Atualizar feed ----------
-        const btnMais = document.getElementById('btn-mais');
-
-        btnMais.addEventListener('click', async () => {
-            const original = btnMais.textContent;
-            btnMais.disabled = true;
-            btnMais.textContent = '⏳ Atualizando...';
-
-            try {
-                await fetch('/feed-mais');
-                await carregarFeed();
-                await carregarCanais();
-            } catch {}
-
-            btnMais.textContent = original;
-            btnMais.disabled = false;
-        });
-
-        // ---------- Init feed ----------
-        carregarCanais();
-        carregarFeed();
-        {% endif %}
-    </script>
-</body>
-</html>
+               
