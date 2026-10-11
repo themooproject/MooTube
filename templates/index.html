@@ -6,248 +6,132 @@
     <title>MooTube - Home</title>
     <style>
         * { box-sizing: border-box; }
-
         input {
-            display: block;
-            margin: 0 auto;
-            width: 800px;
-            max-width: 100%;
-            color: #000;
-            font-size: larger;
-            background-repeat: repeat;
-            background-size: 60px;
-            border-radius: 50px;
-            text-align: right;
+            display: block; margin: 0 auto; width: 800px; max-width: 100%;
+            color: #000; font-size: larger; background-repeat: repeat;
+            background-size: 60px; border-radius: 50px; text-align: right;
             background-image: url("/static/cow-texture.jpg");
         }
         button {
-            display: block;
-            margin: 0 auto;
-            color: #000;
-            font-size: larger;
-            background-repeat: repeat;
-            background-size: 60px;
-            border-radius: 50px;
-            text-align: center;
-            background-image: url("/static/cow-texture.jpg");
-            cursor: pointer;
+            display: block; margin: 0 auto; color: #000; font-size: larger;
+            background-repeat: repeat; background-size: 60px;
+            border-radius: 50px; text-align: center;
+            background-image: url("/static/cow-texture.jpg"); cursor: pointer;
         }
         body {
-            background-repeat: repeat;
-            background-size: 100px;
-            margin: 0;
+            background-repeat: repeat; background-size: 100px; margin: 0;
             background-color: rgb(240, 238, 238);
             font-family: Arial, Helvetica, sans-serif;
         }
-
         header {
-            background-color: white;
-            padding: 10px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            justify-content: center;
+            background-color: white; padding: 10px; display: flex;
+            align-items: center; gap: 20px; justify-content: center;
             flex-wrap: wrap;
         }
-
         h1 { margin: 0; }
-
         #select-versao {
             background-image: url("/static/cow-texture.jpg");
-            background-repeat: repeat;
-            background-size: 60px;
-            border: 2px solid #ccc;
-            border-radius: 50px;
-            padding: 6px 12px;
-            font-size: 14px;
-            color: #333;
-            cursor: pointer;
-            max-width: 220px;
+            background-repeat: repeat; background-size: 60px;
+            border: 2px solid #ccc; border-radius: 50px;
+            padding: 6px 12px; font-size: 14px; color: #333;
+            cursor: pointer; max-width: 220px;
         }
         #select-versao:focus { outline: none; border-color: #999; }
-
-        .videos, .feed {
-            text-align: center;
-            margin: 50px 20px;
-        }
-
+        .videos, .feed { text-align: center; margin: 50px 20px; }
         .video-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 30px;
+            display: flex; flex-wrap: wrap; gap: 20px;
+            justify-content: center; margin-top: 30px;
         }
-
         .video-card {
-            background: white;
-            border-radius: 15px;
-            padding: 15px;
-            width: 260px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            text-align: left;
+            background: white; border-radius: 15px; padding: 15px;
+            width: 260px; display: flex; flex-direction: column;
+            gap: 10px; text-align: left;
         }
-
         .videos .video-card {
-            width: 200px;
-            text-align: center;
-            align-items: stretch;
+            width: 200px; text-align: center; align-items: stretch;
         }
-
         .video-player {
-            width: 100%;
-            border-radius: 10px;
+            width: 100%; border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-
         .videos .video-card p {
-            margin: 0;
-            font-size: 13px;
-            word-break: break-word;
+            margin: 0; font-size: 13px; word-break: break-word;
         }
-
         .videos .video-card form { margin: 0; }
-
         .feed .video-card a { display: block; line-height: 0; }
-
         .feed .video-card img {
-            width: 100%;
-            border-radius: 10px;
-            display: block;
-            aspect-ratio: 16 / 9;
-            object-fit: cover;
+            width: 100%; border-radius: 10px; display: block;
+            aspect-ratio: 16 / 9; object-fit: cover;
         }
-
         .feed .video-card p {
-            font-size: 14px;
-            font-weight: bold;
-            margin: 0;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
+            font-size: 14px; font-weight: bold; margin: 0;
+            overflow: hidden; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical;
         }
-
-        .feed .video-card small {
-            color: #777;
-            font-size: 12px;
-        }
-
+        .feed .video-card small { color: #777; font-size: 12px; }
         .btn-baixar {
             background-image: url("/static/cow-texture.jpg");
-            background-repeat: repeat;
-            background-size: 60px;
-            border: 2px solid #ccc;
-            color: #333;
-            font-size: 14px;
-            padding: 6px 14px;
-            border-radius: 50px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: auto;
+            background-repeat: repeat; background-size: 60px;
+            border: 2px solid #ccc; color: #333; font-size: 14px;
+            padding: 6px 14px; border-radius: 50px; cursor: pointer;
+            width: 100%; margin-top: auto;
         }
         .btn-baixar[disabled] { opacity: 0.6; cursor: wait; }
-
         .btn-mais {
             background-image: url("/static/cow-texture.jpg");
-            background-repeat: repeat;
-            background-size: 60px;
-            border: 2px solid #ccc;
-            color: #333;
-            font-size: 15px;
-            padding: 8px 22px;
-            border-radius: 50px;
-            cursor: pointer;
-            width: auto;
-            margin: 0 auto;
+            background-repeat: repeat; background-size: 60px;
+            border: 2px solid #ccc; color: #333; font-size: 15px;
+            padding: 8px 22px; border-radius: 50px; cursor: pointer;
+            width: auto; margin: 0 auto;
         }
         .btn-mais[disabled] { opacity: 0.6; cursor: wait; }
-
         #canais-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            max-width: 900px;
+            display: flex; flex-wrap: wrap; gap: 8px;
+            justify-content: center; max-width: 900px;
             margin: 0 auto 20px auto;
         }
-
         .canal-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 50px;
-            padding: 6px 12px;
-            font-size: 13px;
-            color: #333;
+            display: inline-flex; align-items: center; gap: 6px;
+            background: white; border: 1px solid #ddd;
+            border-radius: 50px; padding: 6px 12px;
+            font-size: 13px; color: #333;
         }
-
         .canal-remover {
-            background: none;
-            border: none;
-            color: #c00;
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0 4px;
-            margin: 0;
-            width: auto;
-            background-image: none !important;
+            background: none; border: none; color: #c00;
+            cursor: pointer; font-size: 14px; padding: 0 4px;
+            margin: 0; width: auto; background-image: none !important;
             border-radius: 50%;
         }
         .canal-remover:hover { color: #900; }
-
         .update-banner {
-            background-color: #f5f5f5;
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-            border-bottom: 2px solid #ddd;
-            margin: 0;
-            color: #333;
+            background-color: #f5f5f5; padding: 15px;
+            text-align: center; font-weight: bold;
+            border-bottom: 2px solid #ddd; margin: 0; color: #333;
         }
-
         @media (max-width: 768px) {
             header {
-                flex-wrap: wrap;
-                gap: 8px;
-                padding: 12px 10px;
-                background: white !important;
-                border-bottom: 2px solid #ddd;
+                flex-wrap: wrap; gap: 8px; padding: 12px 10px;
+                background: white !important; border-bottom: 2px solid #ddd;
             }
             header h1 {
-                font-size: 20px;
-                width: 100%;
-                text-align: center;
-                color: #333;
+                font-size: 20px; width: 100%;
+                text-align: center; color: #333;
             }
             header input[type="search"] {
-                width: 100% !important;
-                height: 40px !important;
-                font-size: 14px !important;
-                text-align: center !important;
-                border: 2px solid #ccc !important;
-                color: #333 !important;
+                width: 100% !important; height: 40px !important;
+                font-size: 14px !important; text-align: center !important;
+                border: 2px solid #ccc !important; color: #333 !important;
             }
             header form:first-of-type { width: 100%; margin: 0; }
             header form { display: inline-block; margin: 0; }
             header button {
-                display: inline-block;
-                padding: 6px 14px;
-                font-size: 14px;
-                margin: 0 2px;
-                min-width: 40px;
-                border: 2px solid #ccc !important;
-                color: #333 !important;
+                display: inline-block; padding: 6px 14px;
+                font-size: 14px; margin: 0 2px; min-width: 40px;
+                border: 2px solid #ccc !important; color: #333 !important;
                 border-radius: 50px !important;
             }
             #select-versao {
-                max-width: 160px;
-                font-size: 13px;
-                padding: 5px 8px;
+                max-width: 160px; font-size: 13px; padding: 5px 8px;
             }
             .videos, .feed { margin: 20px 10px; }
             .video-grid { gap: 12px; }
@@ -256,21 +140,18 @@
             .video-card p { font-size: 12px; }
             .btn-baixar { font-size: 12px; padding: 4px 10px; }
         }
-
         @media (max-width: 480px) {
             .videos .video-card { width: 140px; padding: 8px; }
             .feed .video-card { width: 160px; }
             header h1 { font-size: 17px; }
             header input[type="search"] {
-                height: 36px !important;
-                font-size: 13px !important;
+                height: 36px !important; font-size: 13px !important;
             }
-            header button { font-size: 13px; padding: 4px 10px; min-width: 34px; }
+            header button {
+                font-size: 13px; padding: 4px 10px; min-width: 34px;
+            }
             .video-card p { font-size: 11px; }
-            #select-versao {
-                max-width: 130px;
-                font-size: 12px;
-            }
+            #select-versao { max-width: 130px; font-size: 12px; }
         }
     </style>
 </head>
@@ -283,275 +164,187 @@
             <input type="search" name="busca" placeholder="Pesquisar vídeos...">
         </form>
         {% endif %}
-
-        {% if config.select_versao_ativo %}
-        <select id="select-versao" title="Escolher versão">
-            <option value="__latest__" data-versao="mais recente">
-                🆕 Mais recente
-            </option>
-            {% for v in versoes %}
-            <option value="{{ v.sha }}"
-                    data-versao="{{ v.versao }}"
-                    {% if v.versao == versao_atual %}selected{% endif %}>
-                {{ v.versao }} ({{ v.data }}){% if v.versao == versao_atual %} — atual{% endif %}
-            </option>
-            {% endfor %}
-        </select>
-
-        <form action="/trocar_versao_dropdown" method="get" id="form-versao"
-              onsubmit="return prepararTroca();">
-            <input type="hidden" name="sha" id="input-sha">
-            <input type="hidden" name="versao" id="input-versao">
-            <button type="submit">🔄</button>
-        </form>
-        {% endif %}
-
-        {% if config.urls_ativo %}
-        <form action="/url" method="post">
-            <button type="submit">🔗</button>
-        </form>
-        {% endif %}
-
-        {% if config.features_ativo %}
-        <form action="/features" method="get">
-            <button>➕</button>
-        </form>
-        {% endif %}
-
-        <form action="/configuracoes" method="get">
-            <button title="Configurações">⚙️</button>
-        </form>
-    </header>
-
-    {% if notificacao %}
-    <div class="update-banner">🐮 {{ notificacao }}</div>
+    {% if config.select_versao_ativo %}
+    <select id="select-versao" title="Escolher versão">
+        <option value="__latest__" data-versao="mais recente">
+            🆕 Mais recente
+        </option>
+        {% for v in versoes %}
+        <option value="{{ v.sha }}"
+                data-versao="{{ v.versao }}"
+                {% if v.versao == versao_atual %}selected{% endif %}>
+            {{ v.versao }} ({{ v.data }}){% if v.versao == versao_atual %} — atual{% endif %}
+        </option>
+        {% endfor %}
+    </select>
+    <form action="/trocar_versao_dropdown" method="get" id="form-versao"
+          onsubmit="return prepararTroca();">
+        <input type="hidden" name="sha" id="input-sha">
+        <input type="hidden" name="versao" id="input-versao">
+        <button type="submit">🔄</button>
+    </form>
     {% endif %}
 
-    {% if notificacao_global %}
-    <div class="update-banner" id="banner-global">🌐 {{ notificacao_global }}</div>
+    {% if config.urls_ativo %}
+    <form action="/url" method="post">
+        <button type="submit">🔗</button>
+    </form>
     {% endif %}
 
-    {% if tem_atualizacao %}
-    <div class="update-banner">
-        🔄 Nova versão {{ versao }} disponível! Escolha no dropdown e clique em 🔄.
+    {% if config.features_ativo %}
+    <form action="/features" method="get">
+        <button>➕</button>
+    </form>
+    {% endif %}
+
+    <form action="/configuracoes" method="get">
+        <button title="Configurações">⚙️</button>
+    </form>
+</header>
+
+{% if notificacao %}
+<div class="update-banner">🐮 {{ notificacao }}</div>
+{% endif %}
+
+{% if notificacao_global %}
+<div class="update-banner" id="banner-global">🌐 {{ notificacao_global }}</div>
+{% endif %}
+
+{% if tem_atualizacao %}
+<div class="update-banner">
+    🔄 Nova versão {{ versao }} disponível! Escolha no dropdown e clique em 🔄.
+</div>
+{% endif %}
+
+<div class="videos">
+    <h2 id="biblioteca-titulo">📁 Sua biblioteca ({{ videos|length }} vídeos)</h2>
+    <div class="video-grid" id="biblioteca-grid">
+        {% for video in videos %}
+        <div class="video-card">
+            <video class="video-player" controls>
+                <source src="{{ url_for('serve_video', nome_video=video) }}" type="video/mp4">
+                Seu navegador não suporta vídeo.
+            </video>
+            <p>{{ video }}</p>
+            <form action="/deletar/{{video}}">
+                <button>deletar</button>
+            </form>
+        </div>
+        {% endfor %}
     </div>
-    {% endif %}
+</div>
 
-    <div class="videos">
-        <h2 id="biblioteca-titulo">📁 Sua biblioteca ({{ videos|length }} vídeos)</h2>
-        <div class="video-grid" id="biblioteca-grid">
-            {% for video in videos %}
+{% if config.feed_ativo %}
+<div class="feed">
+    <h2>📡 Feed</h2>
+    <div id="canais-container"></div>
+    <p id="feed-status" style="color:#666;font-size:14px;">Carregando...</p>
+    <div class="video-grid" id="feed-grid"></div>
+    <div style="margin-top:24px;">
+        <button id="btn-mais" class="btn-mais">✨ Atualizar feed</button>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;',
+            '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    function renderCardBiblioteca(v) {
+        const safe = escapeHtml(v);
+        return `
             <div class="video-card">
                 <video class="video-player" controls>
-                    <source src="{{ url_for('serve_video', nome_video=video) }}" type="video/mp4">
+                    <source src="/video/${encodeURIComponent(v)}" type="video/mp4">
                     Seu navegador não suporta vídeo.
                 </video>
-                <p>{{ video }}</p>
-                <form action="/deletar/{{video}}">
+                <p>${safe}</p>
+                <form action="/deletar/${encodeURIComponent(v)}">
                     <button>deletar</button>
                 </form>
             </div>
-            {% endfor %}
-        </div>
-    </div>
+        `;
+    }
+function renderBiblioteca(videos) {
+    const grid = document.getElementById('biblioteca-grid');
+    document.getElementById('biblioteca-titulo')
+        .textContent = `📁 Sua biblioteca (${videos.length} vídeos)`;
+    if (videos.length === 0) {
+        grid.innerHTML = '<p>Nenhum vídeo baixado ainda.</p>';
+        return;
+    }
+    grid.innerHTML = videos.map(renderCardBiblioteca).join('');
+}
 
-    {% if config.feed_ativo %}
-    <div class="feed">
-        <h2>📡 Feed</h2>
+{% if config.select_versao_ativo %}
+function prepararTroca() {
+    const select = document.getElementById('select-versao');
+    const opt = select.selectedOptions[0];
+    const sha = opt.value;
+    const versao = opt.dataset.versao;
+    if (sha === '__latest__') {
+        document.getElementById('input-sha').value = '';
+        document.getElementById('input-versao').value = 'mais recente';
+        return confirm('Baixar a versão MAIS RECENTE?');
+    } else {
+        document.getElementById('input-sha').value = sha;
+        document.getElementById('input-versao').value = versao;
+        return confirm('Trocar pra versão ' + versao + '?');
+    }
+}
+{% endif %}
 
-        <div id="canais-container"></div>
-
-        <p id="feed-status" style="color:#666;font-size:14px;">Carregando...</p>
-        <div class="video-grid" id="feed-grid"></div>
-
-        <div style="margin-top:24px;">
-            <button id="btn-mais" class="btn-mais">✨ Atualizar feed</button>
-        </div>
-    </div>
-    {% endif %}
-
-    <script>
-        function escapeHtml(s) {
-            return String(s).replace(/[&<>"']/g, c => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;',
-                '"': '&quot;', "'": '&#39;'
-            })[c]);
-        }
-
-        function renderCardBiblioteca(v) {
-            const safe = escapeHtml(v);
-            return `
-                <div class="video-card">
-                    <video class="video-player" controls>
-                        <source src="/video/${encodeURIComponent(v)}" type="video/mp4">
-                        Seu navegador não suporta vídeo.
-                    </video>
-                    <p>${safe}</p>
-                    <form action="/deletar/${encodeURIComponent(v)}">
-                        <button>deletar</button>
-                    </form>
-                </div>
-            `;
-        }
-
-        function renderBiblioteca(videos) {
-            const grid = document.getElementById('biblioteca-grid');
-            document.getElementById('biblioteca-titulo')
-                .textContent = `📁 Sua biblioteca (${videos.length} vídeos)`;
-            if (videos.length === 0) {
-                grid.innerHTML = '<p>Nenhum vídeo baixado ainda.</p>';
-                return;
-            }
-            grid.innerHTML = videos.map(renderCardBiblioteca).join('');
-        }
-
-        {% if config.select_versao_ativo %}
-        function prepararTroca() {
-            const select = document.getElementById('select-versao');
-            const opt = select.selectedOptions[0];
-            const sha = opt.value;
-            const versao = opt.dataset.versao;
-
-            if (sha === '__latest__') {
-                document.getElementById('input-sha').value = '';
-                document.getElementById('input-versao').value = 'mais recente';
-                return confirm('Baixar a versão MAIS RECENTE?');
-            } else {
-                document.getElementById('input-sha').value = sha;
-                document.getElementById('input-versao').value = versao;
-                return confirm('Trocar pra versão ' + versao + '?');
-            }
-        }
-        {% endif %}
-
-        {% if config.pesquisa_ativo %}
-        (function() {
-            const input = document.querySelector('input[name="busca"]');
-            if (!input) return;
-            let timeout = null;
-            input.addEventListener('input', function() {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => {
-                    const termo = this.value.trim();
-                    fetch('/filtrar?busca=' + encodeURIComponent(termo))
-                        .then(res => res.json())
-                        .then(videos => {
-                            const grid = document.getElementById('biblioteca-grid');
-                            if (!grid) return;
-                            if (videos.length === 0) {
-                                grid.innerHTML = '<p>Nenhum video encontrado</p>';
-                                return;
-                            }
-                            grid.innerHTML = videos.map(renderCardBiblioteca).join('');
-                        });
-                }, 300);
-            });
-        })();
-        {% endif %}
-
-        {% if config.notificacoes_globais_ativo %}
-        const evento = new EventSource('/stream');
-        evento.onmessage = function(e) {
-            const banner = document.getElementById('banner-global');
-            if (!banner) return;
-            if (e.data) {
-                banner.textContent = '🌐 ' + e.data;
-                banner.style.display = 'block';
-            } else {
-                banner.style.display = 'none';
-            }
-        };
-        {% endif %}
-
-        {% if config.feed_ativo %}
-        function renderCardFeed(r) {
-            const titulo = escapeHtml(r.titulo || '');
-            const canal = escapeHtml(r.canal || '');
-            return `
-                <div class="video-card">
-                    <a href="https://www.youtube.com/watch?v=${r.id}" target="_blank" rel="noopener">
-                        <img src="${r.thumb}" alt="${titulo}" loading="lazy">
-                    </a>
-                    <p title="${titulo}">${titulo}</p>
-                    <small>${canal}</small>
-                    <button class="btn-baixar" data-id="${r.id}">⬇️ Baixar</button>
-                </div>
-            `;
-        }
-
-        function carregarFeed() {
-            const grid = document.getElementById('feed-grid');
-            const status = document.getElementById('feed-status');
-
-            fetch('/feed-api')
-                .then(r => r.json())
+{% if config.pesquisa_ativo %}
+(function() {
+    const input = document.querySelector('input[name="busca"]');
+    if (!input) return;
+    let timeout = null;
+    input.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const termo = this.value.trim();
+            fetch('/filtrar?busca=' + encodeURIComponent(termo))
+                .then(res => res.json())
                 .then(videos => {
-                    if (!videos.length) {
-                        status.textContent = 'Nada no feed ainda. Baixe um vídeo pra começar a seguir o canal dele.';
-                        status.style.display = 'block';
-                        grid.innerHTML = '';
+                    const grid = document.getElementById('biblioteca-grid');
+                    if (!grid) return;
+                    if (videos.length === 0) {
+                        grid.innerHTML = '<p>Nenhum video encontrado</p>';
                         return;
                     }
-                    status.style.display = 'none';
-                    grid.innerHTML = videos.map(renderCardFeed).join('');
-                    bindBotoesBaixar();
-                })
-                .catch(() => {
-                    status.textContent = 'Erro ao carregar feed.';
+                    grid.innerHTML = videos.map(renderCardBiblioteca).join('');
                 });
-        }
+        }, 300);
+    });
+})();
+{% endif %}
 
-        function carregarCanais() {
-            fetch('/feed-canais')
-                .then(r => r.json())
-                .then(canais => {
-                    const box = document.getElementById('canais-container');
-                    if (!canais.length) {
-                        box.innerHTML = '<p style="color:#666;font-size:13px;">Nenhum canal ainda. Baixe um vídeo pra começar a seguir o canal dele.</p>';
-                        return;
-                    }
-                    box.innerHTML = canais.map(c => `
-                        <span class="canal-chip" data-id="${c.channel_id}">
-                            ${escapeHtml(c.nome)}
-                            <button class="canal-remover" data-id="${c.channel_id}" title="Remover do feed">✕</button>
-                        </span>
-                    `).join('');
-                    bindRemoverCanal();
-                });
-        }
-
-        function bindRemoverCanal() {
-            document.querySelectorAll('.canal-remover').forEach(btn => {
-                if (btn.dataset.bound === '1') return;
-                btn.dataset.bound = '1';
-                btn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const cid = btn.dataset.id;
-                    if (!confirm('Remover este canal do feed?')) return;
-                    try {
-                        await fetch('/feed-remover', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: 'channel_id=' + encodeURIComponent(cid)
-                        });
-                        carregarCanais();
-                        carregarFeed();
-                    } catch {}
-                });
-            });
-        }
-
-        function bindBotoesBaixar() {
+{% if config.notificacoes_globais_ativo %}
+const evento = new EventSource('/stream');
+evento.onmessage = function(e) {
+    const banner = document.getElementById('banner-global');
+    if (!banner) return;
+    if (e.data) {
+        banner.textContent = '🌐 ' + e.data;
+        banner.style.display = 'block';
+    } else {
+        banner.style.display = 'none';
+    }
+};
+{% endif %}
+            function bindBotoesBaixar() {
             document.querySelectorAll('.btn-baixar').forEach(btn => {
                 if (btn.dataset.bound === '1') return;
                 btn.dataset.bound = '1';
-
                 btn.addEventListener('click', async () => {
                     const id = btn.dataset.id;
                     const original = btn.textContent;
                     btn.disabled = true;
                     btn.textContent = '⏳ Baixando...';
-
                     try {
                         const res = await fetch('/baixar_video', {
                             method: 'POST',
@@ -559,7 +352,6 @@
                             body: 'video_id=' + encodeURIComponent(id)
                         });
                         const data = await res.json();
-
                         if (data.ok) {
                             btn.textContent = '✅ Baixado';
                             const r = await fetch('/api/videos');
@@ -580,4 +372,27 @@
                             btn.disabled = false;
                         }, 2500);
                     }
-               
+                });
+            });
+        }
+
+        const btnMais = document.getElementById('btn-mais');
+        btnMais.addEventListener('click', async () => {
+            const original = btnMais.textContent;
+            btnMais.disabled = true;
+            btnMais.textContent = '⏳ Atualizando...';
+            try {
+                await fetch('/feed-mais');
+                await carregarFeed();
+                await carregarCanais();
+            } catch {}
+            btnMais.textContent = original;
+            btnMais.disabled = false;
+        });
+
+        carregarCanais();
+        carregarFeed();
+        {% endif %}
+    </script>
+</body>
+</html>
